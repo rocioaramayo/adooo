@@ -22,7 +22,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.uade.tpo.deportes.patterns.observer.NotificadorDeporteFavoritoObserver;
+import com.uade.tpo.deportes.patterns.observer.NotificadorNivelCompatibleObserver;
+import com.uade.tpo.deportes.service.comentarios.ComentarioService;
+import com.uade.tpo.deportes.service.confirmacion.ConfirmacionService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,6 +35,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class PartidoServiceImpl implements PartidoService {
+    @Autowired
+    private NotificadorDeporteFavoritoObserver notificadorDeporteFavorito;
+    @Autowired  
+    private NotificadorNivelCompatibleObserver notificadorNivelCompatible;
+    @Autowired
+    private ComentarioService comentarioService;
+    @Autowired
+    private ConfirmacionService confirmacionService;
 
     @Autowired
     private PartidoRepository partidoRepository;
@@ -95,6 +106,8 @@ public class PartidoServiceImpl implements PartidoService {
         
         // Configurar observers
         partido.agregarObserver(notificadorObserver);
+        partido.agregarObserver(notificadorDeporteFavorito);
+        partido.agregarObserver(notificadorNivelCompatible);
         
         // Configurar estrategia
         configurarEstrategiaInterna(partido, request.getEstrategiaEmparejamiento());
@@ -217,6 +230,13 @@ public class PartidoServiceImpl implements PartidoService {
         // Cambiar estado
         partido.cambiarEstado(request.getNuevoEstado());
         partidoRepository.save(partido);
+
+                if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
+            confirmacionService.crearConfirmacionesPendientes(partido);
+        }
+        if ("FINALIZADO".equals(request.getNuevoEstado())) {
+            comentarioService.generarEstadisticasAlFinalizar(partido);
+        }
         
         return MessageResponse.success("Estado del partido actualizado a: " + request.getNuevoEstado());
     }
@@ -273,6 +293,11 @@ public class PartidoServiceImpl implements PartidoService {
             p.cambiarEstado("FINALIZADO");
             partidoRepository.save(p);
         });
+    }
+    @Override
+    @Transactional
+    public void guardarPartido(Partido partido) {
+        partidoRepository.save(partido);
     }
 
     // Métodos auxiliares privados

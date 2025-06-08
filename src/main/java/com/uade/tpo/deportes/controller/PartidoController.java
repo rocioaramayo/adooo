@@ -1,5 +1,7 @@
 package com.uade.tpo.deportes.controller;
-
+import com.uade.tpo.deportes.service.confirmacion.ConfirmacionService;
+import com.uade.tpo.deportes.service.comentarios.ComentarioService;
+import com.uade.tpo.deportes.dto.AgregarComentarioRequest;
 import com.uade.tpo.deportes.dto.*;
 import com.uade.tpo.deportes.entity.Usuario;
 import com.uade.tpo.deportes.service.partido.PartidoService;
@@ -22,6 +24,30 @@ public class PartidoController {
 
     @Autowired
     private PartidoService partidoService;
+
+    @Autowired
+    private ConfirmacionService confirmacionService;
+    @Autowired
+    private ComentarioService comentarioService;
+
+    // AGREGAR ESTOS MÉTODOS AL FINAL:
+    @PostMapping("/{id}/confirmar")
+    public ResponseEntity<MessageResponse> confirmarParticipacion(
+            @AuthenticationPrincipal Usuario usuario,
+            @PathVariable Long id) {
+        MessageResponse response = confirmacionService.confirmarParticipacion(usuario.getEmail(), id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/comentar")
+    public ResponseEntity<MessageResponse> agregarComentario(
+            @AuthenticationPrincipal Usuario usuario,
+            @PathVariable Long id,
+            @RequestBody AgregarComentarioRequest request) {
+        request.setPartidoId(id);
+        MessageResponse response = comentarioService.agregarComentario(usuario.getEmail(), request);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     public ResponseEntity<PartidoResponse> crearPartido(

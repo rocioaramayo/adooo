@@ -1,6 +1,7 @@
 package com.uade.tpo.deportes.controller;
 
 import com.uade.tpo.deportes.dto.DeporteResponse;
+import com.uade.tpo.deportes.dto.TipoDeporteResponse;
 import com.uade.tpo.deportes.entity.Deporte;
 import com.uade.tpo.deportes.enums.TipoDeporte;
 import com.uade.tpo.deportes.patterns.factory.DeporteFactoryProvider;
@@ -42,14 +43,16 @@ public class DeporteController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/tipos")
-    public ResponseEntity<List<String>> obtenerTiposDeporte() {
-        List<String> tipos = Arrays.stream(TipoDeporte.values())
-                .map(TipoDeporte::getNombre)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(tipos);
-    }
-
+ @GetMapping("/tipos")
+public ResponseEntity<List<TipoDeporteResponse>> obtenerTiposDeporte() {
+    List<TipoDeporteResponse> tipos = Arrays.stream(TipoDeporte.values())
+            .map(tipo -> TipoDeporteResponse.builder()
+                    .value(tipo.name())      // FUTBOL, BASQUET, etc.
+                    .label(tipo.getNombre()) // Fútbol, Básquet, etc.
+                    .build())
+            .collect(Collectors.toList());
+    return ResponseEntity.ok(tipos);
+}
     @GetMapping("/{id}")
     public ResponseEntity<DeporteResponse> obtenerDeporte(@PathVariable Long id) {
         return deporteRepository.findById(id)
