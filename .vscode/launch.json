@@ -9,6 +9,16 @@
             "projectName": "uno-mas",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-UnoMasDeportesApplication<uno-mas-deportes>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.uade.tpo.deportes.UnoMasDeportesApplication",
+            "projectName": "uno-mas-deportes",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }
