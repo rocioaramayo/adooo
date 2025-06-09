@@ -294,7 +294,6 @@ public class PartidoServiceImpl implements PartidoService {
             partidoRepository.save(p);
         });
     }
-    @Override
     @Transactional
     public void guardarPartido(Partido partido) {
         partidoRepository.save(partido);
