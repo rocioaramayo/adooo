@@ -20,15 +20,22 @@ public class Ubicacion {
     @Column(nullable = false)
     private String direccion;
 
-    @Column(nullable = false)
+    // ✅ CAMBIO: Permitir null en coordenadas
+    @Column(nullable = true)  // ✅ CAMBIADO: Ahora permite null
     private Double latitud;
 
-    @Column(nullable = false)
+    @Column(nullable = true)  // ✅ CAMBIADO: Ahora permite null
     private Double longitud;
 
-    private String zona;
+    private String zona; // Ya permite null
 
     public Double calcularDistancia(Ubicacion otra) {
+        // ✅ MEJORADO: Verificar null antes de calcular
+        if (this.latitud == null || this.longitud == null || 
+            otra.latitud == null || otra.longitud == null) {
+            return null; // No se puede calcular distancia sin coordenadas
+        }
+        
         // Fórmula de Haversine simplificada para calcular distancia
         final int R = 6371; // Radio de la Tierra en km
         
@@ -42,5 +49,18 @@ public class Ubicacion {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         
         return R * c; // Distancia en km
+    }
+
+    // ✅ NUEVO: Método para verificar si tiene coordenadas
+    public boolean tieneCoordenadasCompletas() {
+        return latitud != null && longitud != null;
+    }
+
+    // ✅ NUEVO: Método para obtener coordenadas como string
+    public String obtenerCoordenadasString() {
+        if (tieneCoordenadasCompletas()) {
+            return String.format("%.6f, %.6f", latitud, longitud);
+        }
+        return "Coordenadas no disponibles";
     }
 }

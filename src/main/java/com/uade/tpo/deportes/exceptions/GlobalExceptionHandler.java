@@ -7,6 +7,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.time.LocalDateTime;
 
@@ -101,10 +103,42 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
+    // ✅ NUEVO: Manejo específico para errores de base de datos
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<MessageResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        String mensaje = "Error de integridad de datos";
+        String detalle = ex.getMessage();
+        
+        // Analizar el tipo de error específico
+        if (detalle.contains("not-null")) {
+            mensaje = "Campo requerido faltante";
+            detalle = "Uno o más campos obligatorios están vacíos";
+        } else if (detalle.contains("unique") || detalle.contains("duplicate")) {
+            mensaje = "Datos duplicados";
+            detalle = "Ya existe un registro con estos datos";
+        } else if (detalle.contains("foreign key")) {
+            mensaje = "Referencia inválida";
+            detalle = "Hay una referencia a datos que no existen";
+        }
+        
+        System.err.println("🔍 DataIntegrityViolationException: " + ex.getMessage());
+        
+        MessageResponse response = MessageResponse.builder()
+                .mensaje(mensaje)
+                .estado("error")
+                .timestamp(LocalDateTime.now())
+                .detalle(detalle)
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    // ✅ MEJORADO: Manejo más específico para IllegalArgumentException
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<MessageResponse> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
+        System.err.println("🔍 IllegalArgumentException: " + ex.getMessage());
+        
         MessageResponse response = MessageResponse.builder()
-                .mensaje("Argumento inválido")
+                .mensaje("Datos inválidos")
                 .estado("error")
                 .timestamp(LocalDateTime.now())
                 .detalle(ex.getMessage())
@@ -114,6 +148,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<MessageResponse> handleIllegalState(IllegalStateException ex, WebRequest request) {
+        System.err.println("🔍 IllegalStateException: " + ex.getMessage());
+        
         MessageResponse response = MessageResponse.builder()
                 .mensaje("Estado inválido")
                 .estado("error")
@@ -123,13 +159,38 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    // ✅ NUEVO: Manejo para errores de validación de Spring
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<MessageResponse> handleValidationErrors(MethodArgumentNotValidException ex, WebRequest request) {
+        StringBuilder detalles = new StringBuilder();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            detalles.append(error.getField()).append(": ").append(error.getDefaultMessage()).append("; ");
+        });
+        
+        MessageResponse response = MessageResponse.builder()
+                .mensaje("Errores de validación")
+                .estado("error")
+                .timestamp(LocalDateTime.now())
+                .detalle(detalles.toString())
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    // ✅ MEJORADO: Manejo genérico con más logging
     @ExceptionHandler(Exception.class)
     public ResponseEntity<MessageResponse> handleGenericException(Exception ex, WebRequest request) {
+        // Log detallado para debugging
+        System.err.println("🔥 ERROR INESPERADO:");
+        System.err.println("Tipo: " + ex.getClass().getSimpleName());
+        System.err.println("Mensaje: " + ex.getMessage());
+        System.err.println("Request: " + request.getDescription(false));
+        ex.printStackTrace();
+        
         MessageResponse response = MessageResponse.builder()
                 .mensaje("Error interno del servidor")
                 .estado("error")
                 .timestamp(LocalDateTime.now())
-                .detalle("Ha ocurrido un error inesperado")
+                .detalle("Ha ocurrido un error inesperado. Revisa los logs del servidor para más detalles.")
                 .build();
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
