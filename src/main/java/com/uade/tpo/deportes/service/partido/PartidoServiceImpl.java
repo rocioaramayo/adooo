@@ -29,7 +29,9 @@ import com.uade.tpo.deportes.service.confirmacion.ConfirmacionService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,47 +149,175 @@ public class PartidoServiceImpl implements PartidoService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public Page<PartidoResponse> buscarPartidos(String emailUsuario, CriteriosBusqueda criterios, Pageable pageable) {
-        Usuario usuario = usuarioService.obtenerUsuarioPorEmail(emailUsuario);
+@Override
+public Page<PartidoResponse> buscarPartidos(String emailUsuario, CriteriosBusqueda criterios, Pageable pageable) {
+    Usuario usuario = usuarioService.obtenerUsuarioPorEmail(emailUsuario);
+    
+    System.out.println("🔍 === BÚSQUEDA INTELIGENTE INICIADA ===");
+    System.out.println("👤 Usuario: " + usuario.getNombreUsuario() + " (Nivel: " + usuario.getNivelJuego() + ")");
+    
+    // ⚡ PASO 1: Obtener partidos candidatos
+    List<Partido> partidos = obtenerPartidosCandidatos(usuario, criterios);
+    System.out.println("📊 Partidos candidatos encontrados: " + partidos.size());
+    
+    // ⚡ PASO 2: Aplicar filtros
+    partidos = aplicarFiltrosInteligentes(partidos, criterios);
+    System.out.println("🔧 Partidos después de filtros: " + partidos.size());
+    
+    // ⚡ PASO 3: Configurar estrategias y calcular compatibilidad
+    partidos.forEach(p -> {
+        configurarEstrategiaInterna(p, p.getEstrategiaActual());
+    });
+    
+    // ⚡ PASO 4: Ordenar por compatibilidad
+    partidos = ordenarPartidosPorCompatibilidad(partidos, criterios, usuario);
+    
+    // ⚡ PASO 5: Convertir a responses
+    List<PartidoResponse> responses = partidos.stream()
+            .map(p -> mapearAResponseConCompatibilidad(p, usuario))
+            .collect(Collectors.toList());
+    
+    // ⚡ PASO 6: Paginación
+    int start = (int) pageable.getOffset();
+    int end = Math.min((start + pageable.getPageSize()), responses.size());
+    List<PartidoResponse> pageContent = responses.subList(start, end);
+    
+    System.out.println("📄 Página devuelta: " + pageContent.size() + " partidos");
+    System.out.println("🔍 === BÚSQUEDA COMPLETADA ===\n");
+    
+    return new PageImpl<>(pageContent, pageable, responses.size());
+}
+
+// 🎯 MÉTODOS AUXILIARES SIMPLIFICADOS
+
+private List<Partido> obtenerPartidosCandidatos(Usuario usuario, CriteriosBusqueda criterios) {
+    LocalDateTime ahora = LocalDateTime.now();
+    
+    if (criterios.getTipoDeporte() != null) {
+        System.out.println("🎾 Búsqueda por deporte: " + criterios.getTipoDeporte());
+        return partidoRepository.findPartidosDisponiblesPorDeporte(usuario, criterios.getTipoDeporte(), ahora);
+    } else if (criterios.getZona() != null) {
+        System.out.println("🗺️ Búsqueda por zona: " + criterios.getZona());
+        return partidoRepository.findPartidosDisponiblesPorZona(usuario, criterios.getZona(), ahora);
+    } else {
+        System.out.println("🌟 Búsqueda general");
+        return partidoRepository.findPartidosDisponiblesParaUsuario(usuario, ahora);
+    }
+}
+
+private List<Partido> aplicarFiltrosInteligentes(List<Partido> partidos, CriteriosBusqueda criterios) {
+    return partidos.stream()
+            // Filtros temporales
+            .filter(p -> criterios.getFechaDesde() == null || p.getHorario().isAfter(criterios.getFechaDesde()))
+            .filter(p -> criterios.getFechaHasta() == null || p.getHorario().isBefore(criterios.getFechaHasta()))
+            
+            // Solo disponibles si se solicita
+            .filter(p -> !criterios.isSoloDisponibles() || 
+                        p.getJugadores().size() < p.getCantidadJugadoresRequeridos())
+            
+            // No partidos muy próximos (menos de 30 min)
+            .filter(p -> p.getHorario().isAfter(LocalDateTime.now().plusMinutes(30)))
+            
+            .collect(Collectors.toList());
+}
+
+private List<Partido> ordenarPartidosPorCompatibilidad(List<Partido> partidos, CriteriosBusqueda criterios, Usuario usuario) {
+    // Crear mapa de compatibilidades
+    Map<Long, Double> compatibilidades = new HashMap<>();
+    
+    for (Partido partido : partidos) {
+        double compatibilidad = 0.0;
         
-        // Obtener partidos disponibles
-        List<Partido> partidos;
-        
-        if (criterios.getTipoDeporte() != null) {
-            partidos = partidoRepository.findPartidosDisponiblesPorDeporte(
-                usuario, criterios.getTipoDeporte(), LocalDateTime.now());
-        } else if (criterios.getZona() != null) {
-            partidos = partidoRepository.findPartidosDisponiblesPorZona(
-                usuario, criterios.getZona(), LocalDateTime.now());
-        } else {
-            partidos = partidoRepository.findPartidosDisponiblesParaUsuario(
-                usuario, LocalDateTime.now());
+        // Calcular compatibilidad si hay estrategia
+        if (partido.getEstrategiaEmparejamiento() != null) {
+            compatibilidad = partido.getEstrategiaEmparejamiento().calcularCompatibilidad(usuario, partido);
         }
         
-        // Aplicar filtros adicionales
-        partidos = aplicarFiltros(partidos, criterios);
+        // 🎯 BONUS POR DEPORTE FAVORITO
+        if (usuario.getDeporteFavorito() != null && 
+            usuario.getDeporteFavorito().equals(partido.getDeporte().getTipo())) {
+            compatibilidad += 0.1;
+        }
         
-        // Configurar estrategias y calcular compatibilidad
-        partidos.forEach(p -> {
-            configurarEstrategiaInterna(p, p.getEstrategiaActual());
-        });
+        // 🕐 BONUS POR HORARIO CONVENIENTE
+        if (esHorarioConveniente(partido.getHorario())) {
+            compatibilidad += 0.05;
+        }
         
-        // Ordenar según criterios
-        partidos = ordenarPartidos(partidos, criterios, usuario);
+        compatibilidad = Math.max(0.0, Math.min(1.0, compatibilidad));
+        compatibilidades.put(partido.getId(), compatibilidad);
         
-        // Convertir a responses
-        List<PartidoResponse> responses = partidos.stream()
-                .map(p -> mapearAResponse(p, usuario))
-                .collect(Collectors.toList());
-        
-        // Aplicar paginación manual
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), responses.size());
-        List<PartidoResponse> pageContent = responses.subList(start, end);
-        
-        return new PageImpl<>(pageContent, pageable, responses.size());
+        System.out.println(String.format("🎯 Compatibilidad %s: %.1f%%", 
+            partido.getDeporte().getNombre(), compatibilidad * 100));
     }
+    
+    // Ordenar por compatibilidad
+    List<Partido> partidosOrdenados = new ArrayList<>(partidos);
+    
+    if ("compatibilidad".equals(criterios.getOrdenarPor()) || criterios.getOrdenarPor() == null) {
+        partidosOrdenados.sort((p1, p2) -> {
+            Double comp1 = compatibilidades.get(p1.getId());
+            Double comp2 = compatibilidades.get(p2.getId());
+            return comp2.compareTo(comp1); // Descendente
+        });
+    } else if ("fecha".equals(criterios.getOrdenarPor())) {
+        partidosOrdenados.sort(Comparator.comparing(Partido::getHorario));
+    }
+    
+    return partidosOrdenados;
+}
+
+private boolean esHorarioConveniente(LocalDateTime horario) {
+    int hora = horario.getHour();
+    int diaSemana = horario.getDayOfWeek().getValue();
+    
+    if (diaSemana <= 5) { // Lunes a Viernes
+        return hora >= 17 && hora <= 21;
+    } else { // Fin de semana
+        return hora >= 10 && hora <= 22;
+    }
+}
+
+private PartidoResponse mapearAResponseConCompatibilidad(Partido partido, Usuario usuario) {
+    boolean puedeUnirse = partido.puedeUnirse(usuario);
+    
+    // Calcular compatibilidad final
+    double compatibilidad = 0.0;
+    if (partido.getEstrategiaEmparejamiento() != null) {
+        compatibilidad = partido.getEstrategiaEmparejamiento().calcularCompatibilidad(usuario, partido);
+    }
+    
+    // Aplicar mismos bonus que en ordenamiento
+    if (usuario.getDeporteFavorito() != null && 
+        usuario.getDeporteFavorito().equals(partido.getDeporte().getTipo())) {
+        compatibilidad += 0.1;
+    }
+    
+    if (esHorarioConveniente(partido.getHorario())) {
+        compatibilidad += 0.05;
+    }
+    
+    compatibilidad = Math.max(0.0, Math.min(1.0, compatibilidad));
+    
+    return PartidoResponse.builder()
+            .id(partido.getId())
+            .deporte(mapearDeporteAResponse(partido.getDeporte()))
+            .cantidadJugadoresRequeridos(partido.getCantidadJugadoresRequeridos())
+            .cantidadJugadoresActual(partido.getJugadores().size())
+            .duracion(partido.getDuracion())
+            .ubicacion(mapearUbicacionAResponse(partido.getUbicacion()))
+            .horario(partido.getHorario())
+            .organizador(mapearUsuarioAResponse(partido.getOrganizador()))
+            .jugadores(partido.getJugadores().stream()
+                    .map(this::mapearUsuarioAResponse)
+                    .collect(Collectors.toList()))
+            .estado(partido.getEstadoActual())
+            .estrategiaEmparejamiento(partido.getEstrategiaActual())
+            .createdAt(partido.getCreatedAt())
+            .puedeUnirse(puedeUnirse)
+            .compatibilidad(compatibilidad) // ⭐ COMPATIBILIDAD CALCULADA
+            .build();
+}
 
     @Override
     @Transactional
