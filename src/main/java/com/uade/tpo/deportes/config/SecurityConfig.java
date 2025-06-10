@@ -36,7 +36,8 @@ public class SecurityConfig {
 
             // 2. Reglas de acceso - ADAPTADAS PARA EL DOMINIO DEPORTIVO
             .authorizeHttpRequests(auth -> auth
-
+            //SACARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR DSPPPPPPPPPPPPPP
+                .requestMatchers("/api/v1/notificaciones/test-email").permitAll()  // ← agrega esto
                 // a) Público: auth, errores, deportes y ubicaciones (GET)
                 .requestMatchers("/api/v1/auth/**", "/error/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/deportes/**").permitAll()

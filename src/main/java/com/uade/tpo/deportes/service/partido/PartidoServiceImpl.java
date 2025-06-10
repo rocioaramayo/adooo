@@ -231,7 +231,7 @@ public class PartidoServiceImpl implements PartidoService {
         partido.cambiarEstado(request.getNuevoEstado());
         partidoRepository.save(partido);
 
-                if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
+        if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
             confirmacionService.crearConfirmacionesPendientes(partido);
         }
         if ("FINALIZADO".equals(request.getNuevoEstado())) {
@@ -293,10 +293,6 @@ public class PartidoServiceImpl implements PartidoService {
             p.cambiarEstado("FINALIZADO");
             partidoRepository.save(p);
         });
-    }
-    @Transactional
-    public void guardarPartido(Partido partido) {
-        partidoRepository.save(partido);
     }
 
     // Métodos auxiliares privados
