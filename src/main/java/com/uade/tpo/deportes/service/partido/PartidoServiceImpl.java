@@ -22,6 +22,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.uade.tpo.deportes.patterns.observer.NotificadorCompletoObserver;
 import com.uade.tpo.deportes.patterns.observer.NotificadorDeporteFavoritoObserver;
 import com.uade.tpo.deportes.patterns.observer.NotificadorNivelCompatibleObserver;
 import com.uade.tpo.deportes.service.comentarios.ComentarioService;
@@ -72,7 +74,8 @@ public class PartidoServiceImpl implements PartidoService {
     
     @Autowired
     private EmparejamientoPorHistorialStrategy emparejamientoPorHistorial;
-
+     @Autowired
+    private NotificadorCompletoObserver notificadorCompletoObserver; //  ESTA ES LA CRÍTICA
     @Override
     @Transactional
     public PartidoResponse crearPartido(String emailOrganizador, CrearPartidoRequest request) {
@@ -105,11 +108,18 @@ public class PartidoServiceImpl implements PartidoService {
                 .estrategiaActual(request.getEstrategiaEmparejamiento() != null ? 
                     request.getEstrategiaEmparejamiento() : "POR_NIVEL")
                 .build();
+        // Configurar observers ANTES de guardar
+      if (partido.getObservers() == null) {
+        partido.setObservers(new ArrayList<>());
+        }
         
-        // Configurar observers
+        // Agregar todos los observers necesarios
         partido.agregarObserver(notificadorObserver);
         partido.agregarObserver(notificadorDeporteFavorito);
         partido.agregarObserver(notificadorNivelCompatible);
+        
+        // ⭐ CRÍTICO: Agregar el observer completo que maneja todos los casos del TPO
+        partido.agregarObserver(notificadorCompletoObserver);
         
         // Configurar estrategia
         configurarEstrategiaInterna(partido, request.getEstrategiaEmparejamiento());
@@ -117,7 +127,7 @@ public class PartidoServiceImpl implements PartidoService {
         // Guardar partido
         partidoRepository.save(partido);
         
-        // Notificar creación
+        // ✅ NOTIFICAR CREACIÓN (REQUERIMIENTO TPO: "Se cree un partido nuevo")
         partido.notificarObservers();
         
         return mapearAResponse(partido, organizador);
@@ -320,57 +330,108 @@ private PartidoResponse mapearAResponseConCompatibilidad(Partido partido, Usuari
 }
 
     @Override
-    @Transactional
-    public MessageResponse unirseAPartido(String emailUsuario, Long partidoId) {
-        Usuario usuario = usuarioService.obtenerUsuarioPorEmail(emailUsuario);
-        Partido partido = obtenerPartidoPorId(partidoId);
+@Transactional
+public MessageResponse unirseAPartido(String emailUsuario, Long partidoId) {
+    Usuario usuario = usuarioService.obtenerUsuarioPorEmail(emailUsuario);
+    Partido partido = obtenerPartidoPorId(partidoId);
+    
+    // ✅ RECONECTAR OBSERVERS (por si se perdieron al cargar de BD)
+    reconectarObservers(partido);
+    
+    // Configurar estrategia
+    configurarEstrategiaInterna(partido, partido.getEstrategiaActual());
+    
+    // Configurar estado
+    EstadoPartido estado = obtenerEstadoPorNombre(partido.getEstadoActual());
+    
+    try {
+        int jugadoresAntes = partido.getJugadores().size();
         
-        // Configurar estrategia
-        configurarEstrategiaInterna(partido, partido.getEstrategiaActual());
+        // Intentar unirse
+        estado.manejarSolicitudUnion(partido, usuario);
         
-        // Configurar estado
-        EstadoPartido estado = obtenerEstadoPorNombre(partido.getEstadoActual());
-        
-        try {
-            // Intentar unirse
-            estado.manejarSolicitudUnion(partido, usuario);
+        // ✅ VERIFICAR SI AHORA ESTÁ COMPLETO (REQUERIMIENTO TPO)
+        if (jugadoresAntes < partido.getCantidadJugadoresRequeridos() && 
+            partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
             
-            // Guardar cambios
-            partidoRepository.save(partido);
-            
-            return MessageResponse.success("Te has unido al partido exitosamente");
-            
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return MessageResponse.error("No puedes unirte al partido", e.getMessage());
+            // Cambiar estado automáticamente
+            partido.cambiarEstado("PARTIDO_ARMADO");
+            System.out.println("🎯 Partido " + partidoId + " ahora está ARMADO - Disparando notificaciones");
         }
+        
+        // Guardar cambios
+        partidoRepository.save(partido);
+        
+        // ✅ NOTIFICAR CAMBIOS
+        partido.notificarObservers();
+        
+        return MessageResponse.success("Te has unido al partido exitosamente");
+        
+    } catch (IllegalArgumentException | IllegalStateException e) {
+        return MessageResponse.error("No puedes unirte al partido", e.getMessage());
     }
+}
 
     @Override
-    @Transactional
-    public MessageResponse cambiarEstadoPartido(String emailOrganizador, Long partidoId, 
-                                              CambiarEstadoPartidoRequest request) {
-        Usuario organizador = usuarioService.obtenerUsuarioPorEmail(emailOrganizador);
-        Partido partido = obtenerPartidoPorId(partidoId);
-        
-        // Verificar que es el organizador
-        if (!partido.getOrganizador().equals(organizador)) {
-            throw new UsuarioNoAutorizadoException("Solo el organizador puede cambiar el estado del partido");
-        }
-        
-        // Cambiar estado
-        partido.cambiarEstado(request.getNuevoEstado());
-        partidoRepository.save(partido);
-
-        if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
-            confirmacionService.crearConfirmacionesPendientes(partido);
-        }
-        if ("FINALIZADO".equals(request.getNuevoEstado())) {
-            comentarioService.generarEstadisticasAlFinalizar(partido);
-        }
-        
-        return MessageResponse.success("Estado del partido actualizado a: " + request.getNuevoEstado());
+@Transactional  
+public MessageResponse cambiarEstadoPartido(String emailOrganizador, Long partidoId, 
+                                          CambiarEstadoPartidoRequest request) {
+    Usuario organizador = usuarioService.obtenerUsuarioPorEmail(emailOrganizador);
+    Partido partido = obtenerPartidoPorId(partidoId);
+    
+    // Verificar que es el organizador
+    if (!partido.getOrganizador().equals(organizador)) {
+        throw new UsuarioNoAutorizadoException("Solo el organizador puede cambiar el estado del partido");
     }
+    
+    // ✅ RECONECTAR OBSERVERS
+    reconectarObservers(partido);
+    
+    String estadoAnterior = partido.getEstadoActual();
+    
+    // Cambiar estado
+    partido.cambiarEstado(request.getNuevoEstado());
+    partidoRepository.save(partido);
+    
+    // ✅ NOTIFICAR CAMBIO DE ESTADO (REQUERIMIENTO TPO)
+    System.out.println("🔔 Estado cambió de " + estadoAnterior + " → " + request.getNuevoEstado() + 
+                      " - Disparando notificaciones");
+    partido.notificarObservers();
 
+    // Acciones adicionales por estado
+    if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
+        confirmacionService.crearConfirmacionesPendientes(partido);
+    }
+    if ("FINALIZADO".equals(request.getNuevoEstado())) {
+        comentarioService.generarEstadisticasAlFinalizar(partido);
+    }
+    
+    return MessageResponse.success("Estado del partido actualizado a: " + request.getNuevoEstado());
+}
+/**
+ * 🔌 RECONECTAR OBSERVERS - Soluciona problema de pérdida de observers al cargar de BD
+ */
+private void reconectarObservers(Partido partido) {
+    try {
+        // Limpiar observers existentes
+        if (partido.getObservers() != null) {
+            partido.getObservers().clear();
+        } else {
+            partido.setObservers(new ArrayList<>());
+        }
+        
+        // Reagregar todos los observers necesarios
+        partido.agregarObserver(notificadorObserver);
+        partido.agregarObserver(notificadorDeporteFavorito);
+        partido.agregarObserver(notificadorNivelCompatible);
+        partido.agregarObserver(notificadorCompletoObserver); // ⭐ CRÍTICO
+        
+        System.out.println("🔌 Observers reconectados para partido " + partido.getId());
+        
+    } catch (Exception e) {
+        System.err.println("⚠️ Error reconectando observers: " + e.getMessage());
+    }
+}
     @Override
     @Transactional
     public MessageResponse configurarEstrategia(Long partidoId, ConfigurarEstrategiaRequest request) {

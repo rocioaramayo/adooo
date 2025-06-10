@@ -1,6 +1,8 @@
 package com.uade.tpo.deportes.service.scheduler;
 
 import com.uade.tpo.deportes.entity.Partido;
+import com.uade.tpo.deportes.patterns.observer.NotificadorCompletoObserver;
+import com.uade.tpo.deportes.patterns.observer.NotificadorObserver;
 import com.uade.tpo.deportes.repository.PartidoRepository;
 import com.uade.tpo.deportes.service.partido.PartidoService;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -18,45 +21,62 @@ public class ScheduledTaskService {
 
     @Autowired
     private PartidoService partidoService;
-    
+        @Autowired
+    private NotificadorCompletoObserver notificadorCompletoObserver;
+     @Autowired
+    private NotificadorObserver notificadorObserver;
     @Autowired
     private PartidoRepository partidoRepository;
 
     // ⏰ TRANSICIÓN 1: CONFIRMADO → EN_JUEGO (cada minuto)
-    @Scheduled(fixedRate = 60000) // 1 minuto - más preciso para inicio de partidos
-    @Transactional
-    public void iniciarPartidosConfirmados() {
-        LocalDateTime ahora = LocalDateTime.now();
-        LocalDateTime hace5Minutos = ahora.minusMinutes(5);
-        
-        System.out.println("🔄 [" + ahora + "] Verificando partidos para iniciar...");
-        
-        List<Partido> partidosParaIniciar = partidoRepository.findPartidosParaIniciar(ahora, hace5Minutos);
-        
-        for (Partido partido : partidosParaIniciar) {
-            try {
-                System.out.println("🏃‍♂️ Iniciando partido ID:" + partido.getId() + 
-                                 " - " + partido.getDeporte().getNombre() + 
-                                 " en " + partido.getUbicacion().getDireccion());
-                
-                // TRANSICIÓN STATE: CONFIRMADO → EN_JUEGO
-                partido.cambiarEstado("EN_JUEGO");
-                partidoRepository.save(partido);
-                
-                // TRIGGER OBSERVER: Notificaciones automáticas
-                partido.notificarObservers();
-                
-                System.out.println("✅ Partido iniciado exitosamente");
-                
-            } catch (Exception e) {
-                System.err.println("❌ Error iniciando partido " + partido.getId() + ": " + e.getMessage());
-            }
-        }
-        
-        if (!partidosParaIniciar.isEmpty()) {
-            System.out.println("🎯 " + partidosParaIniciar.size() + " partidos iniciados automáticamente");
+@Scheduled(fixedRate = 60000)
+@Transactional
+public void iniciarPartidosConfirmados() {
+    LocalDateTime ahora = LocalDateTime.now();
+    LocalDateTime hace5Minutos = ahora.minusMinutes(5);
+    
+    System.out.println("🔄 [" + ahora + "] Verificando partidos para iniciar...");
+    
+    List<Partido> partidosParaIniciar = partidoRepository.findPartidosParaIniciar(ahora, hace5Minutos);
+    
+    for (Partido partido : partidosParaIniciar) {
+        try {
+            System.out.println("🏃‍♂️ Iniciando partido ID:" + partido.getId());
+            
+            // ✅ RECONECTAR OBSERVERS ANTES DE NOTIFICAR
+            reconectarObserversEnScheduled(partido);
+            
+            // TRANSICIÓN STATE: CONFIRMADO → EN_JUEGO
+            partido.cambiarEstado("EN_JUEGO");
+            partidoRepository.save(partido);
+            
+            // ✅ TRIGGER OBSERVER: Notificaciones automáticas
+            System.out.println("🔔 Disparando notificaciones automáticas para partido " + partido.getId());
+            partido.notificarObservers();
+            
+            System.out.println("✅ Partido iniciado exitosamente");
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error iniciando partido " + partido.getId() + ": " + e.getMessage());
         }
     }
+}
+private void reconectarObserversEnScheduled(Partido partido) {
+    // Solo obtener los observers que necesitamos (sin inyección compleja)
+    if (partido.getObservers() == null) {
+        partido.setObservers(new ArrayList<>());
+    }
+    
+    // Al menos agregar el observer básico
+    partido.agregarObserver(notificadorObserver);
+    
+    // Si están disponibles, agregar los otros
+    try {
+        partido.agregarObserver(notificadorCompletoObserver);
+    } catch (Exception e) {
+        System.out.println("⚠️ NotificadorCompletoObserver no disponible en scheduled task");
+    }
+}
 
     // ⏰ TRANSICIÓN 2: EN_JUEGO → FINALIZADO (cada 5 minutos)
     @Scheduled(fixedRate = 300000) // 5 minutos
