@@ -212,8 +212,8 @@ public class NotificadorCompletoObserver implements ObserverPartido {
         List<Usuario> participantes = new ArrayList<>();
         
         // Agregar jugadores activos
-        if (partido.getJugadores() != null) {
-            participantes.addAll(partido.getJugadores().stream()
+        if (partido.getParticipantes() != null) {
+            participantes.addAll(partido.getParticipantes().stream()
                 .filter(Usuario::isActivo)
                 .collect(Collectors.toList()));
         }

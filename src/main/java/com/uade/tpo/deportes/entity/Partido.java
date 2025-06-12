@@ -50,12 +50,12 @@ public class Partido implements ObservablePartido {
 
     @ManyToMany
     @JoinTable(
-        name = "partido_jugadores",
+        name = "partido_participantes",
         joinColumns = @JoinColumn(name = "partido_id"),
         inverseJoinColumns = @JoinColumn(name = "usuario_id")
     )
     @Builder.Default
-    private List<Usuario> jugadores = new ArrayList<>();
+    private List<Usuario> participantes = new ArrayList<>();
 
     @Column(nullable = false)
     private String estadoActual = "NECESITAMOS_JUGADORES";
@@ -81,7 +81,7 @@ public class Partido implements ObservablePartido {
     // Métodos de negocio
     public void agregarJugador(Usuario usuario) {
         if (puedeUnirse(usuario)) {
-            jugadores.add(usuario);
+            participantes.add(usuario);
             notificarObservers();
         }
     }
@@ -89,6 +89,10 @@ public class Partido implements ObservablePartido {
     public boolean puedeUnirse(Usuario usuario) {
         return estrategiaEmparejamiento != null && 
                estrategiaEmparejamiento.puedeUnirse(usuario, this);
+    }
+
+    public List<Usuario> getParticipantes() {
+        return participantes;
     }
 
     public void cambiarEstado(String nuevoEstado) {

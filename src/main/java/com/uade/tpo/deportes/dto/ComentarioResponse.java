@@ -9,12 +9,14 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class ComentarioResponse {
     private Long id;
-    private String usuarioNombre;
-    private String comentario;
+    private Long partidoId;
+    private Long usuarioId;
+    private String nombreUsuario;
+    private String contenido;
     private Integer calificacion;
     private LocalDateTime fechaCreacion;
 }

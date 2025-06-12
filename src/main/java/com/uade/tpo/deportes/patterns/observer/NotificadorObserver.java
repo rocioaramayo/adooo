@@ -22,7 +22,7 @@ public class NotificadorObserver implements ObserverPartido {
         String mensaje = construirMensaje(partido, evento);
         
         // Notificar a todos los jugadores del partido
-        partido.getJugadores().forEach(jugador -> {
+        partido.getParticipantes().forEach(jugador -> {
             try {
                 // Enviar email
                 notificadorEmail.enviarNotificacion(jugador.getEmail(), mensaje);
@@ -37,7 +37,7 @@ public class NotificadorObserver implements ObserverPartido {
         });
 
         // También notificar al organizador si no está en la lista de jugadores
-        if (!partido.getJugadores().contains(partido.getOrganizador())) {
+        if (!partido.getParticipantes().contains(partido.getOrganizador())) {
             try {
                 notificadorEmail.enviarNotificacion(partido.getOrganizador().getEmail(), mensaje);
                 String tokenPush = "token_" + partido.getOrganizador().getId();

@@ -10,7 +10,7 @@ public class NecesitamosJugadoresState implements EstadoPartido {
     @Override
     public void manejarSolicitudUnion(Partido partido, Usuario usuario) {
         if (partido.puedeUnirse(usuario)) {
-            partido.getJugadores().add(usuario);
+            partido.getParticipantes().add(usuario);
             verificarTransicion(partido);
         } else {
             throw new IllegalArgumentException("El usuario no puede unirse al partido");
@@ -19,7 +19,7 @@ public class NecesitamosJugadoresState implements EstadoPartido {
 
     @Override
     public void verificarTransicion(Partido partido) {
-        if (partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
+        if (partido.getParticipantes().size() >= partido.getCantidadJugadoresRequeridos()) {
             partido.cambiarEstado("PARTIDO_ARMADO");
         }
     }

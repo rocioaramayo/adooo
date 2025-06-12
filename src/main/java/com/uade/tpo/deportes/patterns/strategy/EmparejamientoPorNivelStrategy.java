@@ -23,11 +23,11 @@ public class EmparejamientoPorNivelStrategy implements EstrategiaEmparejamiento 
     @Override
     public boolean puedeUnirse(Usuario usuario, Partido partido) {
         // 1. Verificaciones básicas
-        if (partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
+        if (partido.getParticipantes().size() >= partido.getCantidadJugadoresRequeridos()) {
             return false;
         }
         
-        if (partido.getJugadores().contains(usuario)) {
+        if (partido.getParticipantes().contains(usuario)) {
             return false;
         }
         
@@ -86,18 +86,18 @@ public class EmparejamientoPorNivelStrategy implements EstrategiaEmparejamiento 
 
     // 🤝 COMPATIBILIDAD CON GRUPO EXISTENTE
     private double calcularCompatibilidadConGrupo(Usuario usuario, Partido partido) {
-        if (partido.getJugadores().isEmpty()) {
+        if (partido.getParticipantes().isEmpty()) {
             return 1.0; // Primer jugador, compatibilidad máxima
         }
 
         NivelJuego nivelUsuario = usuario.getNivelJuego();
         
         // Calcular distribución de niveles en el partido
-        long principiantes = partido.getJugadores().stream()
+        long principiantes = partido.getParticipantes().stream()
                 .mapToLong(j -> j.getNivelJuego() == NivelJuego.PRINCIPIANTE ? 1 : 0).sum();
-        long intermedios = partido.getJugadores().stream()
+        long intermedios = partido.getParticipantes().stream()
                 .mapToLong(j -> j.getNivelJuego() == NivelJuego.INTERMEDIO ? 1 : 0).sum();
-        long avanzados = partido.getJugadores().stream()
+        long avanzados = partido.getParticipantes().stream()
                 .mapToLong(j -> j.getNivelJuego() == NivelJuego.AVANZADO ? 1 : 0).sum();
         
         // 🎲 LÓGICA DE BALANCEADO DE GRUPO
@@ -147,14 +147,14 @@ public class EmparejamientoPorNivelStrategy implements EstrategiaEmparejamiento 
 
     // 🔍 VERIFICAR COMPATIBILIDAD CON JUGADORES EXISTENTES
     private boolean esCompatibleConJugadoresExistentes(Usuario usuario, Partido partido) {
-        if (partido.getJugadores().isEmpty()) {
+        if (partido.getParticipantes().isEmpty()) {
             return true; // Primer jugador
         }
 
         NivelJuego nivelUsuario = usuario.getNivelJuego();
         
         // Verificar que no haya más de 2 niveles de diferencia con cualquier jugador
-        for (Usuario jugador : partido.getJugadores()) {
+        for (Usuario jugador : partido.getParticipantes()) {
             if (jugador.getNivelJuego() != null) {
                 int diferencia = Math.abs(nivelUsuario.ordinal() - jugador.getNivelJuego().ordinal());
                 if (diferencia > 2) {

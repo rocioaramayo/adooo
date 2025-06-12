@@ -103,7 +103,7 @@ public class PartidoServiceImpl implements PartidoService {
                 .ubicacion(ubicacion)
                 .horario(request.getHorario())
                 .organizador(organizador)
-                .jugadores(new ArrayList<>())
+                .participantes(new ArrayList<>())
                 .estadoActual("NECESITAMOS_JUGADORES")
                 .estrategiaActual(request.getEstrategiaEmparejamiento() != null ? 
                     request.getEstrategiaEmparejamiento() : "POR_NIVEL")
@@ -223,7 +223,7 @@ private List<Partido> aplicarFiltrosInteligentes(List<Partido> partidos, Criteri
             
             // Solo disponibles si se solicita
             .filter(p -> !criterios.isSoloDisponibles() || 
-                        p.getJugadores().size() < p.getCantidadJugadoresRequeridos())
+                        p.getParticipantes().size() < p.getCantidadJugadoresRequeridos())
             
             // No partidos muy próximos (menos de 30 min)
             .filter(p -> p.getHorario().isAfter(LocalDateTime.now().plusMinutes(30)))
@@ -313,12 +313,12 @@ private PartidoResponse mapearAResponseConCompatibilidad(Partido partido, Usuari
             .id(partido.getId())
             .deporte(mapearDeporteAResponse(partido.getDeporte()))
             .cantidadJugadoresRequeridos(partido.getCantidadJugadoresRequeridos())
-            .cantidadJugadoresActual(partido.getJugadores().size())
+            .cantidadJugadoresActual(partido.getParticipantes().size())
             .duracion(partido.getDuracion())
             .ubicacion(mapearUbicacionAResponse(partido.getUbicacion()))
             .horario(partido.getHorario())
             .organizador(mapearUsuarioAResponse(partido.getOrganizador()))
-            .jugadores(partido.getJugadores().stream()
+            .jugadores(partido.getParticipantes().stream()
                     .map(this::mapearUsuarioAResponse)
                     .collect(Collectors.toList()))
             .estado(partido.getEstadoActual())
@@ -345,14 +345,14 @@ public MessageResponse unirseAPartido(String emailUsuario, Long partidoId) {
     EstadoPartido estado = obtenerEstadoPorNombre(partido.getEstadoActual());
     
     try {
-        int jugadoresAntes = partido.getJugadores().size();
+        int jugadoresAntes = partido.getParticipantes().size();
         
         // Intentar unirse
         estado.manejarSolicitudUnion(partido, usuario);
         
         // ✅ VERIFICAR SI AHORA ESTÁ COMPLETO (REQUERIMIENTO TPO)
         if (jugadoresAntes < partido.getCantidadJugadoresRequeridos() && 
-            partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
+            partido.getParticipantes().size() >= partido.getCantidadJugadoresRequeridos()) {
             
             // Cambiar estado automáticamente
             partido.cambiarEstado("PARTIDO_ARMADO");
@@ -560,12 +560,12 @@ private void reconectarObservers(Partido partido) {
                 .id(partido.getId())
                 .deporte(mapearDeporteAResponse(partido.getDeporte()))
                 .cantidadJugadoresRequeridos(partido.getCantidadJugadoresRequeridos())
-                .cantidadJugadoresActual(partido.getJugadores().size())
+                .cantidadJugadoresActual(partido.getParticipantes().size())
                 .duracion(partido.getDuracion())
                 .ubicacion(mapearUbicacionAResponse(partido.getUbicacion()))
                 .horario(partido.getHorario())
                 .organizador(mapearUsuarioAResponse(partido.getOrganizador()))
-                .jugadores(partido.getJugadores().stream()
+                .jugadores(partido.getParticipantes().stream()
                         .map(this::mapearUsuarioAResponse)
                         .collect(Collectors.toList()))
                 .estado(partido.getEstadoActual())

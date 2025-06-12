@@ -19,7 +19,7 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
     // Búsquedas básicas
     List<Partido> findByOrganizador(Usuario organizador);
     
-    @Query("SELECT p FROM Partido p WHERE :usuario MEMBER OF p.jugadores")
+    @Query("SELECT p FROM Partido p WHERE :usuario MEMBER OF p.participantes")
     List<Partido> findPartidosConJugador(@Param("usuario") Usuario usuario);
     
     // Búsquedas por estado
@@ -46,8 +46,8 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
     @Query("SELECT p FROM Partido p WHERE " +
            "p.estadoActual = 'NECESITAMOS_JUGADORES' AND " +
            "p.horario > :ahora AND " +
-           "SIZE(p.jugadores) < p.cantidadJugadoresRequeridos AND " +
-           ":usuario NOT MEMBER OF p.jugadores AND " +
+           "SIZE(p.participantes) < p.cantidadJugadoresRequeridos AND " +
+           ":usuario NOT MEMBER OF p.participantes AND " +
            "p.organizador != :usuario")
     List<Partido> findPartidosDisponiblesParaUsuario(
         @Param("usuario") Usuario usuario,
@@ -57,9 +57,9 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
     @Query("SELECT p FROM Partido p WHERE " +
            "p.estadoActual = 'NECESITAMOS_JUGADORES' AND " +
            "p.horario > :ahora AND " +
-           "SIZE(p.jugadores) < p.cantidadJugadoresRequeridos AND " +
+           "SIZE(p.participantes) < p.cantidadJugadoresRequeridos AND " +
            "p.deporte.tipo = :tipoDeporte AND " +
-           ":usuario NOT MEMBER OF p.jugadores AND " +
+           ":usuario NOT MEMBER OF p.participantes AND " +
            "p.organizador != :usuario")
     List<Partido> findPartidosDisponiblesPorDeporte(
         @Param("usuario") Usuario usuario,
@@ -72,7 +72,7 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
            "p.estadoActual = 'NECESITAMOS_JUGADORES' AND " +
            "p.ubicacion.zona = :zona AND " +
            "p.horario > :ahora AND " +
-           ":usuario NOT MEMBER OF p.jugadores AND " +
+           ":usuario NOT MEMBER OF p.participantes AND " +
            "p.organizador != :usuario")
     List<Partido> findPartidosDisponiblesPorZona(
         @Param("usuario") Usuario usuario,
@@ -105,12 +105,12 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
     @Query("SELECT p.estadoActual, COUNT(p) FROM Partido p GROUP BY p.estadoActual")
     List<Object[]> contarPartidosPorEstado();
     
-    @Query("SELECT AVG(SIZE(p.jugadores)) FROM Partido p WHERE p.estadoActual = 'FINALIZADO'")
+    @Query("SELECT AVG(SIZE(p.participantes)) FROM Partido p WHERE p.estadoActual = 'FINALIZADO'")
     Double promedioJugadoresPorPartido();
     
     // Búsquedas para el historial de un usuario
     @Query("SELECT p FROM Partido p WHERE " +
-           "(p.organizador = :usuario OR :usuario MEMBER OF p.jugadores) AND " +
+           "(p.organizador = :usuario OR :usuario MEMBER OF p.participantes) AND " +
            "p.estadoActual = :estado " +
            "ORDER BY p.horario DESC")
     List<Partido> findHistorialUsuario(

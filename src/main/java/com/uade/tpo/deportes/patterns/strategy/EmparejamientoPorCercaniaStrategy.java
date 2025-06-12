@@ -30,11 +30,11 @@ public class EmparejamientoPorCercaniaStrategy implements EstrategiaEmparejamien
     @Override
     public boolean puedeUnirse(Usuario usuario, Partido partido) {
         // Verificaciones básicas
-        if (partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
+        if (partido.getParticipantes().size() >= partido.getCantidadJugadoresRequeridos()) {
             return false;
         }
         
-        if (partido.getJugadores().contains(usuario)) {
+        if (partido.getParticipantes().contains(usuario)) {
             return false;
         }
 
@@ -96,7 +96,6 @@ public class EmparejamientoPorCercaniaStrategy implements EstrategiaEmparejamien
     // 📏 COMPATIBILIDAD POR DISTANCIA REAL
     private double calcularCompatibilidadPorDistancia(Usuario usuario, Partido partido) {
         String zonaUsuario = obtenerZonaPreferidaUsuario(usuario);
-        String zonaPartido = partido.getUbicacion().getZona();
         
         // Intentar cálculo por coordenadas reales
         Double[] coordUsuario = COORDENADAS_ZONAS.get(zonaUsuario != null ? zonaUsuario.toLowerCase() : "centro");

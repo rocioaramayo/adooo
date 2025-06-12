@@ -7,12 +7,12 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class AgregarComentarioRequest {
     private Long partidoId;
-    private String comentario;
-    private Integer calificacion; // 1-5
+    private String contenido;
+    private Integer calificacion; // 1-5 estrellas
 
     // Setter específico para resolver el error
     public void setPartidoId(Long partidoId) {

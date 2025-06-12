@@ -30,11 +30,11 @@ public class EmparejamientoPorHistorialStrategy implements EstrategiaEmparejamie
     @Override
     public boolean puedeUnirse(Usuario usuario, Partido partido) {
         // Verificaciones básicas
-        if (partido.getJugadores().size() >= partido.getCantidadJugadoresRequeridos()) {
+        if (partido.getParticipantes().size() >= partido.getCantidadJugadoresRequeridos()) {
             return false;
         }
         
-        if (partido.getJugadores().contains(usuario)) {
+        if (partido.getParticipantes().contains(usuario)) {
             return false;
         }
 
@@ -103,7 +103,7 @@ public class EmparejamientoPorHistorialStrategy implements EstrategiaEmparejamie
             Set<Long> jugadoresConocidos = obtenerJugadoresConocidos(usuario);
             
             // Contar cuántos jugadores del partido ya conoce
-            long jugadoresConocidosEnPartido = partido.getJugadores().stream()
+            long jugadoresConocidosEnPartido = partido.getParticipantes().stream()
                     .mapToLong(j -> jugadoresConocidos.contains(j.getId()) ? 1 : 0)
                     .sum();
             
@@ -219,7 +219,7 @@ public class EmparejamientoPorHistorialStrategy implements EstrategiaEmparejamie
     private Set<Long> obtenerJugadoresConocidos(Usuario usuario) {
         try {
             Set<Long> jugadoresConocidos = partidoRepository.findPartidosConJugador(usuario).stream()
-                    .flatMap(p -> p.getJugadores().stream())
+                    .flatMap(p -> p.getParticipantes().stream())
                     .filter(j -> !j.getId().equals(usuario.getId()))
                     .map(Usuario::getId)
                     .collect(Collectors.toSet());
