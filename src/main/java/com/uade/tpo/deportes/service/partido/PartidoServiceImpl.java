@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.uade.tpo.deportes.service.partido.NotificacionAsyncService;
 
 @Service
 @RequiredArgsConstructor
@@ -76,6 +77,8 @@ public class PartidoServiceImpl implements PartidoService {
     private EmparejamientoPorHistorialStrategy emparejamientoPorHistorial;
      @Autowired
     private NotificadorCompletoObserver notificadorCompletoObserver; //  ESTA ES LA CRÍTICA
+    @Autowired
+    private NotificacionAsyncService notificacionAsyncService;
     @Override
     @Transactional
     public PartidoResponse crearPartido(String emailOrganizador, CrearPartidoRequest request) {
@@ -127,9 +130,10 @@ public class PartidoServiceImpl implements PartidoService {
         // Guardar partido
         partidoRepository.save(partido);
         
-        // ✅ NOTIFICAR CREACIÓN (REQUERIMIENTO TPO: "Se cree un partido nuevo")
-        partido.notificarObservers();
+        // Notificar en segundo plano
+        notificacionAsyncService.notificarCreacionPartido(partido);
         
+        // Responder al usuario inmediatamente
         return mapearAResponse(partido, organizador);
     }
 
@@ -363,7 +367,7 @@ public MessageResponse unirseAPartido(String emailUsuario, Long partidoId) {
         partidoRepository.save(partido);
         
         // ✅ NOTIFICAR CAMBIOS
-        partido.notificarObservers();
+        notificacionAsyncService.notificarCreacionPartido(partido);
         
         return MessageResponse.success("Te has unido al partido exitosamente");
         
@@ -396,7 +400,7 @@ public MessageResponse cambiarEstadoPartido(String emailOrganizador, Long partid
     // ✅ NOTIFICAR CAMBIO DE ESTADO (REQUERIMIENTO TPO)
     System.out.println("🔔 Estado cambió de " + estadoAnterior + " → " + request.getNuevoEstado() + 
                       " - Disparando notificaciones");
-    partido.notificarObservers();
+    notificacionAsyncService.notificarCreacionPartido(partido);
 
     // Acciones adicionales por estado
     if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
