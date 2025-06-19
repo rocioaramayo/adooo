@@ -4,6 +4,12 @@ import com.uade.tpo.deportes.patterns.state.EstadoPartido;
 import com.uade.tpo.deportes.patterns.strategy.EstrategiaEmparejamiento;
 import com.uade.tpo.deportes.patterns.observer.ObservablePartido;
 import com.uade.tpo.deportes.patterns.observer.ObserverPartido;
+import com.uade.tpo.deportes.patterns.state.NecesitamosJugadoresState;
+import com.uade.tpo.deportes.patterns.state.PartidoArmadoState;
+import com.uade.tpo.deportes.patterns.state.ConfirmadoState;
+import com.uade.tpo.deportes.patterns.state.EnJuegoState;
+import com.uade.tpo.deportes.patterns.state.FinalizadoState;
+import com.uade.tpo.deportes.patterns.state.CanceladoState;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -96,8 +102,44 @@ public class Partido implements ObservablePartido {
     }
 
     public void cambiarEstado(String nuevoEstado) {
-        this.estadoActual = nuevoEstado;
-        notificarObservers();
+        // Solo permite transiciones válidas según el patrón State
+        if (this.estado == null) {
+            // Inicializa el estado si es null
+            this.estado = obtenerEstadoPorNombre(this.estadoActual);
+        }
+        EstadoPartido nuevo = obtenerEstadoPorNombre(nuevoEstado);
+        // No se puede volver a estados anteriores desde FINALIZADO o CANCELADO
+        if ("FINALIZADO".equals(this.estadoActual) || "CANCELADO".equals(this.estadoActual)) {
+            // No permite ninguna transición desde estados finales
+            return;
+        }
+        // Solo permite avanzar al siguiente estado lógico
+        EstadoPartido siguiente = this.estado.obtenerEstadoSiguiente();
+        if (siguiente.getNombre().equals(nuevoEstado)) {
+            this.estado = nuevo;
+            this.estadoActual = nuevoEstado;
+            notificarObservers();
+        }
+        // Si intenta una transición inválida, ignora el cambio
+    }
+
+    private EstadoPartido obtenerEstadoPorNombre(String nombre) {
+        switch (nombre) {
+            case "NECESITAMOS_JUGADORES":
+                return new NecesitamosJugadoresState();
+            case "PARTIDO_ARMADO":
+                return new PartidoArmadoState();
+            case "CONFIRMADO":
+                return new ConfirmadoState();
+            case "EN_JUEGO":
+                return new EnJuegoState();
+            case "FINALIZADO":
+                return new FinalizadoState();
+            case "CANCELADO":
+                return new CanceladoState();
+            default:
+                return new NecesitamosJugadoresState();
+        }
     }
 
     // Implementación ObservablePartido
@@ -119,7 +161,17 @@ public class Partido implements ObservablePartido {
     @Override
     public void notificarObservers() {
         if (observers != null) {
-            observers.forEach(observer -> observer.actualizar(this, determinarEvento()));
+            List<ObserverPartido> copiaObservers = new ArrayList<>(observers);
+            int idx = 0;
+            for (ObserverPartido observer : copiaObservers) {
+                try {
+                    System.out.println("Ejecutando observer #" + idx);
+                    observer.actualizar(this, determinarEvento());
+                } catch (Exception e) {
+                    System.err.println("Error en observer #" + idx + ": " + e.getMessage());
+                }
+                idx++;
+            }
         }
     }
 
