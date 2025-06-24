@@ -15,10 +15,14 @@ public interface UsuarioService {
     UsuarioResponse actualizarPerfil(String email, ActualizarPerfilRequest request);
     
     // Búsquedas
-    List<UsuarioResponse> buscarUsuarios(CriteriosBusquedaUsuario criterios);
+    List<UsuarioResponse> buscarUsuarios(CriteriosBusquedaUsuario criterios, String emailUsuario);
     Usuario obtenerUsuarioPorId(Long id);
     Usuario obtenerUsuarioPorEmail(String email);
     
     // Estadísticas
     EstadisticasUsuarioResponse obtenerEstadisticas(String email);
+
+    UsuarioResponse activarUsuario(Long id);
+    UsuarioResponse desactivarUsuario(Long id);
+    UsuarioResponse cambiarRolUsuario(Long id, String nuevoRol);
 }

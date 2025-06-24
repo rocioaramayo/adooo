@@ -377,41 +377,40 @@ public MessageResponse unirseAPartido(String emailUsuario, Long partidoId) {
 }
 
     @Override
-@Transactional  
-public MessageResponse cambiarEstadoPartido(String emailOrganizador, Long partidoId, 
-                                          CambiarEstadoPartidoRequest request) {
-    Usuario organizador = usuarioService.obtenerUsuarioPorEmail(emailOrganizador);
-    Partido partido = obtenerPartidoPorId(partidoId);
+    @Transactional  
+    public MessageResponse cambiarEstadoPartido(String emailOrganizador, Long partidoId, CambiarEstadoPartidoRequest request) {
+        Usuario organizador = usuarioService.obtenerUsuarioPorEmail(emailOrganizador);
+        Partido partido = obtenerPartidoPorId(partidoId);
+        
+        // Permitir que el admin o el organizador cambien el estado
+        if (!partido.getOrganizador().equals(organizador) && !organizador.getRole().name().equals("ADMIN")) {
+            throw new UsuarioNoAutorizadoException("Solo el organizador o un admin pueden cambiar el estado del partido");
+        }
+        
+        // ✅ RECONECTAR OBSERVERS
+        reconectarObservers(partido);
+        
+        String estadoAnterior = partido.getEstadoActual();
+        
+        // Cambiar estado
+        partido.cambiarEstado(request.getNuevoEstado());
+        partidoRepository.save(partido);
+        
+        // ✅ NOTIFICAR CAMBIO DE ESTADO (REQUERIMIENTO TPO)
+        System.out.println("🔔 Estado cambió de " + estadoAnterior + " → " + request.getNuevoEstado() + 
+                          " - Disparando notificaciones");
+        notificacionAsyncService.notificarCreacionPartido(partido);
     
-    // Verificar que es el organizador
-    if (!partido.getOrganizador().equals(organizador)) {
-        throw new UsuarioNoAutorizadoException("Solo el organizador puede cambiar el estado del partido");
+        // Acciones adicionales por estado
+        if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
+            confirmacionService.crearConfirmacionesPendientes(partido);
+        }
+        if ("FINALIZADO".equals(request.getNuevoEstado())) {
+            comentarioService.generarEstadisticasAlFinalizar(partido);
+        }
+        
+        return MessageResponse.success("Estado del partido actualizado a: " + request.getNuevoEstado());
     }
-    
-    // ✅ RECONECTAR OBSERVERS
-    reconectarObservers(partido);
-    
-    String estadoAnterior = partido.getEstadoActual();
-    
-    // Cambiar estado
-    partido.cambiarEstado(request.getNuevoEstado());
-    partidoRepository.save(partido);
-    
-    // ✅ NOTIFICAR CAMBIO DE ESTADO (REQUERIMIENTO TPO)
-    System.out.println("🔔 Estado cambió de " + estadoAnterior + " → " + request.getNuevoEstado() + 
-                      " - Disparando notificaciones");
-    notificacionAsyncService.notificarCreacionPartido(partido);
-
-    // Acciones adicionales por estado
-    if ("PARTIDO_ARMADO".equals(request.getNuevoEstado())) {
-        confirmacionService.crearConfirmacionesPendientes(partido);
-    }
-    if ("FINALIZADO".equals(request.getNuevoEstado())) {
-        comentarioService.generarEstadisticasAlFinalizar(partido);
-    }
-    
-    return MessageResponse.success("Estado del partido actualizado a: " + request.getNuevoEstado());
-}
 /**
  * 🔌 RECONECTAR OBSERVERS - Soluciona problema de pérdida de observers al cargar de BD
  */
@@ -611,5 +610,12 @@ private void reconectarObservers(Partido partido) {
                 .activo(usuario.isActivo())
                 .createdAt(usuario.getCreatedAt())
                 .build();
+    }
+
+    public List<PartidoResponse> buscarTodosParaAdmin() {
+        List<Partido> partidos = partidoRepository.findAll();
+        return partidos.stream()
+                .map(p -> mapearAResponse(p, null))
+                .collect(Collectors.toList());
     }
 }

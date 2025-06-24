@@ -159,12 +159,11 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    public List<UsuarioResponse> buscarUsuarios(CriteriosBusquedaUsuario criterios) {
-        // Implementación simplificada
+    public List<UsuarioResponse> buscarUsuarios(CriteriosBusquedaUsuario criterios, String emailUsuario) {
+        Usuario usuarioActual = obtenerUsuarioPorEmail(emailUsuario);
         List<Usuario> usuarios = usuarioRepository.findAll();
-        
         return usuarios.stream()
-                .filter(u -> u.isActivo())
+                .filter(u -> (usuarioActual.getRole().name().equals("ADMIN")) || u.isActivo())
                 .filter(u -> criterios.getDeporteFavorito() == null || 
                            u.getDeporteFavorito() == criterios.getDeporteFavorito())
                 .filter(u -> criterios.getNivelJuego() == null || 
@@ -205,6 +204,30 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .deporteFavorito(usuario.getDeporteFavorito() != null ? 
                     usuario.getDeporteFavorito().getNombre() : null)
                 .build();
+    }
+
+    @Override
+    public UsuarioResponse activarUsuario(Long id) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+        usuario.setActivo(true);
+        usuarioRepository.save(usuario);
+        return mapearAResponse(usuario);
+    }
+
+    @Override
+    public UsuarioResponse desactivarUsuario(Long id) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+        usuario.setActivo(false);
+        usuarioRepository.save(usuario);
+        return mapearAResponse(usuario);
+    }
+
+    @Override
+    public UsuarioResponse cambiarRolUsuario(Long id, String nuevoRol) {
+        Usuario usuario = obtenerUsuarioPorId(id);
+        usuario.setRole(com.uade.tpo.deportes.enums.Role.valueOf(nuevoRol));
+        usuarioRepository.save(usuario);
+        return mapearAResponse(usuario);
     }
 
     private UsuarioResponse mapearAResponse(Usuario usuario) {

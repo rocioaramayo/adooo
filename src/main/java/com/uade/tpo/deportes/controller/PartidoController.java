@@ -5,13 +5,17 @@ import com.uade.tpo.deportes.dto.AgregarComentarioRequest;
 import com.uade.tpo.deportes.dto.*;
 import com.uade.tpo.deportes.entity.Usuario;
 import com.uade.tpo.deportes.service.partido.PartidoService;
+import com.uade.tpo.deportes.service.usuario.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +33,11 @@ public class PartidoController {
     private ConfirmacionService confirmacionService;
     @Autowired
     private ComentarioService comentarioService;
+
+    @Autowired
+    private UsuarioService usuarioService;
+
+    private static final Logger logger = LoggerFactory.getLogger(PartidoController.class);
 
     // AGREGAR ESTOS MÉTODOS AL FINAL:
     @PostMapping("/{id}/confirmar")
@@ -64,7 +73,23 @@ public class PartidoController {
     }
 
     @GetMapping("/mis-partidos")
-    public ResponseEntity<List<PartidoResponse>> obtenerMisPartidos(@AuthenticationPrincipal Usuario usuario) {
+    public ResponseEntity<List<PartidoResponse>> obtenerMisPartidos(@AuthenticationPrincipal Object principal) {
+        if (principal == null) {
+            logger.debug("[DEBUG] Usuario autenticado en /mis-partidos: null");
+            return ResponseEntity.status(401).build();
+        }
+        Usuario usuario;
+        if (principal instanceof Usuario) {
+            usuario = (Usuario) principal;
+            logger.debug("[DEBUG] Principal es Usuario: {} (rol: {})", usuario.getEmail(), usuario.getRole());
+        } else if (principal instanceof UserDetails) {
+            String email = ((UserDetails) principal).getUsername();
+            usuario = usuarioService.obtenerUsuarioPorEmail(email);
+            logger.debug("[DEBUG] Principal es UserDetails: {} (rol: {})", usuario.getEmail(), usuario.getRole());
+        } else {
+            logger.warn("[DEBUG] Principal de tipo inesperado: {}", principal.getClass().getName());
+            return ResponseEntity.status(401).build();
+        }
         List<PartidoResponse> partidos = partidoService.obtenerPartidosDelUsuario(usuario.getEmail());
         return ResponseEntity.ok(partidos);
     }
@@ -104,5 +129,14 @@ public class PartidoController {
             @RequestBody ConfigurarEstrategiaRequest request) {
         MessageResponse response = partidoService.configurarEstrategia(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/todos")
+    public ResponseEntity<List<PartidoResponse>> obtenerTodosLosPartidos(@AuthenticationPrincipal Usuario usuario) {
+        if (!usuario.getRole().name().equals("ADMIN")) {
+            return ResponseEntity.status(403).build();
+        }
+        List<PartidoResponse> partidos = partidoService.buscarTodosParaAdmin();
+        return ResponseEntity.ok(partidos);
     }
 }

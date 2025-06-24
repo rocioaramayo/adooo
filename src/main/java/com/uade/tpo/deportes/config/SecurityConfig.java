@@ -52,6 +52,7 @@ public class SecurityConfig {
 
                 // c) Usuarios: perfil y búsqueda solo autenticados
                 .requestMatchers("/api/v1/usuarios/**").authenticated()
+                .requestMatchers("/api/v1/usuarios/buscar").hasAuthority("ADMIN")
 
                 // d) Notificaciones: solo usuarios autenticados
                 .requestMatchers("/api/v1/notificaciones/**").authenticated()

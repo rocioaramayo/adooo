@@ -24,4 +24,6 @@ public interface PartidoService {
     // Para el sistema interno
     Partido obtenerPartidoPorId(Long id);
     void procesarTransicionesAutomaticas();
+
+    List<PartidoResponse> buscarTodosParaAdmin();
 }
