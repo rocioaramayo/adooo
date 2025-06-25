@@ -28,4 +28,7 @@ unomas:
     push:
       enabled: true
       firebase:
-        config-path: ${FIREBASE_CONFIG_PATH:src/main/resources/firebase-config.json}
+        # Ruta al archivo de credenciales de servicio de Firebase
+        service-account-path: ${FIREBASE_SERVICE_ACCOUNT:src/main/resources/uno-mas-1f274-firebase-adminsdk-fbsvc-b0d2e45a4d.json}
+        # Configuración del proyecto
+        project-id: uno-mas-1f274

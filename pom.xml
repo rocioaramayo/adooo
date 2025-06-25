@@ -105,6 +105,13 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-thymeleaf</artifactId>
     </dependency>
+    
+    <!-- ✅ AGREGAR: Firebase Admin SDK para notificaciones push reales -->
+    <dependency>
+        <groupId>com.google.firebase</groupId>
+        <artifactId>firebase-admin</artifactId>
+        <version>9.4.0</version>
+    </dependency>
 </dependencies>
 	
 

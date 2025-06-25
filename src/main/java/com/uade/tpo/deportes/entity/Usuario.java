@@ -57,6 +57,9 @@ public class Usuario implements UserDetails {
     @JoinColumn(name = "ubicacion_id")
     private Ubicacion ubicacion;
 
+    @Column(name = "push_token")
+    private String pushToken;
+
     // Implementación UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

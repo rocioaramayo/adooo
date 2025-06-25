@@ -25,4 +25,6 @@ public interface UsuarioService {
     UsuarioResponse activarUsuario(Long id);
     UsuarioResponse desactivarUsuario(Long id);
     UsuarioResponse cambiarRolUsuario(Long id, String nuevoRol);
+
+    void guardarPushToken(Usuario usuario, String token);
 }

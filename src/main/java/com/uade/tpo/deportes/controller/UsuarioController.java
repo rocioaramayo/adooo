@@ -90,4 +90,16 @@ public class UsuarioController {
         UsuarioResponse response = usuarioService.cambiarRolUsuario(id, request.getRol());
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/push-token")
+    public ResponseEntity<?> guardarPushToken(
+            @AuthenticationPrincipal Usuario usuario,
+            @RequestBody java.util.Map<String, String> body) {
+        String token = body.get("token");
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.badRequest().body("Token FCM vacío");
+        }
+        usuarioService.guardarPushToken(usuario, token);
+        return ResponseEntity.ok().build();
+    }
 }

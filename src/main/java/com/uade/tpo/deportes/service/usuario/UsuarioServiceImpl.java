@@ -260,6 +260,12 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapearAResponse(usuario);
     }
 
+    @Override
+    public void guardarPushToken(Usuario usuario, String token) {
+        usuario.setPushToken(token);
+        usuarioRepository.save(usuario);
+    }
+
     private UsuarioResponse mapearAResponse(Usuario usuario) {
         return UsuarioResponse.builder()
                 .id(usuario.getId())
