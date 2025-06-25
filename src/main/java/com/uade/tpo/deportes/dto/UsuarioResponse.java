@@ -23,4 +23,5 @@ public class UsuarioResponse {
     private Role role;
     private boolean activo;
     private LocalDateTime createdAt;
+    private UbicacionResponse ubicacion;
 }

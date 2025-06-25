@@ -53,6 +53,10 @@ public class Usuario implements UserDetails {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ubicacion_id")
+    private Ubicacion ubicacion;
+
     // Implementación UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

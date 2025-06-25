@@ -14,4 +14,5 @@ import lombok.NoArgsConstructor;
 public class ActualizarPerfilRequest {
     private TipoDeporte deporteFavorito;
     private NivelJuego nivelJuego;
+    private UbicacionRequest ubicacion;
 }

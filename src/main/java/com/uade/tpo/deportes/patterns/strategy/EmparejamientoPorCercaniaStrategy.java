@@ -95,28 +95,21 @@ public class EmparejamientoPorCercaniaStrategy implements EstrategiaEmparejamien
 
     // 📏 COMPATIBILIDAD POR DISTANCIA REAL
     private double calcularCompatibilidadPorDistancia(Usuario usuario, Partido partido) {
-        String zonaUsuario = obtenerZonaPreferidaUsuario(usuario);
-        
-        // Intentar cálculo por coordenadas reales
-        Double[] coordUsuario = COORDENADAS_ZONAS.get(zonaUsuario != null ? zonaUsuario.toLowerCase() : "centro");
+        Double[] coordUsuario = obtenerCoordenadasUsuario(usuario);
         Double[] coordPartido = obtenerCoordenadasPartido(partido);
-        
         if (coordUsuario != null && coordPartido != null) {
             double distancia = calcularDistanciaHaversine(
                 coordUsuario[0], coordUsuario[1], 
                 coordPartido[0], coordPartido[1]
             );
-            
-            // Algoritmo de compatibilidad por distancia
-            if (distancia <= 2.0) return 1.0;      // <2km = Excelente
-            if (distancia <= 5.0) return 0.9;      // 2-5km = Muy bueno  
-            if (distancia <= 10.0) return 0.7;     // 5-10km = Bueno
-            if (distancia <= 15.0) return 0.5;     // 10-15km = Aceptable
-            if (distancia <= 25.0) return 0.3;     // 15-25km = Complicado
-            return 0.1;                             // >25km = Muy difícil
+            if (distancia <= 2.0) return 1.0;
+            if (distancia <= 5.0) return 0.9;
+            if (distancia <= 10.0) return 0.7;
+            if (distancia <= 15.0) return 0.5;
+            if (distancia <= 25.0) return 0.3;
+            return 0.1;
         }
-
-        return 0.6; // Sin coordenadas, compatibilidad media
+        return 0.6;
     }
 
     // 🚌 BONUS POR DISPONIBILIDAD DE TRANSPORTE
@@ -147,36 +140,8 @@ public class EmparejamientoPorCercaniaStrategy implements EstrategiaEmparejamien
 
     // 🔍 VERIFICACIÓN DE UBICACIÓN COMPATIBLE
     private boolean esUbicacionCompatible(Usuario usuario, Partido partido) {
-        // Si no hay restricciones configuradas, permitir
-        if (radioMaximo == null || radioMaximo <= 0) {
-            return true;
-        }
-
-        // Verificar por zona
-        String zonaUsuario = obtenerZonaPreferidaUsuario(usuario);
-        String zonaPartido = partido.getUbicacion().getZona();
-        
-        if (zonaUsuario != null && zonaPartido != null) {
-            // Misma zona o zonas adyacentes siempre permitidas
-            if (zonaUsuario.equalsIgnoreCase(zonaPartido) || 
-                sonZonasAdyacentes(zonaUsuario, zonaPartido)) {
-                return true;
-            }
-        }
-
-        // Verificar por distancia real si hay coordenadas
-        Double[] coordUsuario = COORDENADAS_ZONAS.get(zonaUsuario != null ? zonaUsuario.toLowerCase() : "centro");
-        Double[] coordPartido = obtenerCoordenadasPartido(partido);
-        
-        if (coordUsuario != null && coordPartido != null) {
-            double distancia = calcularDistanciaHaversine(
-                coordUsuario[0], coordUsuario[1], 
-                coordPartido[0], coordPartido[1]
-            );
-            return distancia <= radioMaximo;
-        }
-
-        return true; // Si no se puede verificar, permitir
+        // Permitir siempre unirse, solo filtrar por capacidad y si ya es participante
+        return true;
     }
 
     // 🧮 MÉTODOS AUXILIARES MATEMÁTICOS
@@ -253,15 +218,27 @@ public class EmparejamientoPorCercaniaStrategy implements EstrategiaEmparejamien
 
     // Métodos auxiliares existentes...
     private String obtenerZonaPreferidaUsuario(Usuario usuario) {
+        if (usuario.getUbicacion() != null && usuario.getUbicacion().getZona() != null) {
+            return usuario.getUbicacion().getZona();
+        }
+        // Fallback: por deporte favorito (legacy)
         if (usuario.getDeporteFavorito() == null) return "centro";
-        
         switch (usuario.getDeporteFavorito()) {
             case FUTBOL: return "zona sur";
-            case BASQUET: return "palermo"; 
+            case BASQUET: return "palermo";
             case TENIS: return "zona norte";
             case VOLEY: return "puerto madero";
             default: return "centro";
         }
+    }
+
+    private Double[] obtenerCoordenadasUsuario(Usuario usuario) {
+        if (usuario.getUbicacion() != null && usuario.getUbicacion().getLatitud() != null && usuario.getUbicacion().getLongitud() != null) {
+            return new Double[]{usuario.getUbicacion().getLatitud(), usuario.getUbicacion().getLongitud()};
+        }
+        // Fallback: coordenadas aproximadas por zona
+        String zona = obtenerZonaPreferidaUsuario(usuario);
+        return COORDENADAS_ZONAS.get(zona != null ? zona.toLowerCase() : "centro");
     }
 
     private boolean sonZonasAdyacentes(String zona1, String zona2) {

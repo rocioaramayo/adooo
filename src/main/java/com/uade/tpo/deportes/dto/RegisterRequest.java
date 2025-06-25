@@ -17,4 +17,5 @@ public class RegisterRequest {
     private String contrasena;
     private TipoDeporte deporteFavorito; // Opcional
     private NivelJuego nivelJuego; // Opcional
+    private UbicacionRequest ubicacion;
 }

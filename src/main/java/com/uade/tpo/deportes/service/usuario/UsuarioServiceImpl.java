@@ -3,12 +3,14 @@ package com.uade.tpo.deportes.service.usuario;
 import com.uade.tpo.deportes.config.JwtService;
 import com.uade.tpo.deportes.dto.*;
 import com.uade.tpo.deportes.entity.Usuario;
+import com.uade.tpo.deportes.entity.Ubicacion;
 import com.uade.tpo.deportes.enums.Role;
 import com.uade.tpo.deportes.exceptions.EmailInvalidoException;
 import com.uade.tpo.deportes.exceptions.UsuarioNoEncontradoException;
 import com.uade.tpo.deportes.exceptions.UsuarioYaExisteException;
 import com.uade.tpo.deportes.repository.PartidoRepository;
 import com.uade.tpo.deportes.repository.UsuarioRepository;
+import com.uade.tpo.deportes.repository.UbicacionRepository;
 import com.uade.tpo.deportes.service.auth.EmailValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ public class UsuarioServiceImpl implements UsuarioService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private UbicacionRepository ubicacionRepository;
+
     @Override
     @Transactional
     public RegisterResponse registrarUsuario(RegisterRequest request) {
@@ -70,20 +75,33 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new UsuarioYaExisteException("Ya existe un usuario con ese nombre de usuario");
         }
 
-        // 4. Crear usuario
+        // 4. Crear ubicación si viene en el request
+        Ubicacion ubicacion = null;
+        if (request.getUbicacion() != null) {
+            UbicacionRequest ur = request.getUbicacion();
+            ubicacion = Ubicacion.builder()
+                .direccion(ur.getDireccion())
+                .latitud(ur.getLatitud())
+                .longitud(ur.getLongitud())
+                .zona(ur.getZona())
+                .build();
+            ubicacionRepository.save(ubicacion);
+        }
+
+        // 5. Crear usuario
         Usuario usuario = Usuario.builder()
                 .nombreUsuario(request.getNombreUsuario().trim())
                 .email(request.getEmail().trim().toLowerCase())
                 .contrasena(passwordEncoder.encode(request.getContrasena()))
-                .deporteFavorito(request.getDeporteFavorito()) // Puede ser null
-                .nivelJuego(request.getNivelJuego()) // Puede ser null
-                .role(Role.JUGADOR) // Por defecto todos son jugadores
+                .deporteFavorito(request.getDeporteFavorito())
+                .nivelJuego(request.getNivelJuego())
+                .role(Role.JUGADOR)
                 .activo(true)
+                .ubicacion(ubicacion)
                 .build();
-
         usuarioRepository.save(usuario);
 
-        // 5. Generar token JWT
+        // 6. Generar token JWT
         String token = jwtService.generateToken(usuario);
 
         return RegisterResponse.builder()
@@ -152,6 +170,18 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
         if (request.getNivelJuego() != null) {
             usuario.setNivelJuego(request.getNivelJuego());
+        }
+        
+        if (request.getUbicacion() != null) {
+            UbicacionRequest ur = request.getUbicacion();
+            Ubicacion ubicacion = Ubicacion.builder()
+                .direccion(ur.getDireccion())
+                .latitud(ur.getLatitud())
+                .longitud(ur.getLongitud())
+                .zona(ur.getZona())
+                .build();
+            ubicacionRepository.save(ubicacion);
+            usuario.setUbicacion(ubicacion);
         }
         
         usuarioRepository.save(usuario);
@@ -240,6 +270,14 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .role(usuario.getRole())
                 .activo(usuario.isActivo())
                 .createdAt(usuario.getCreatedAt())
+                .ubicacion(usuario.getUbicacion() != null ?
+                    UbicacionResponse.builder()
+                        .id(usuario.getUbicacion().getId())
+                        .direccion(usuario.getUbicacion().getDireccion())
+                        .latitud(usuario.getUbicacion().getLatitud())
+                        .longitud(usuario.getUbicacion().getLongitud())
+                        .zona(usuario.getUbicacion().getZona())
+                        .build() : null)
                 .build();
     }
 }
