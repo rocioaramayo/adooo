@@ -139,4 +139,14 @@ public class PartidoController {
         List<PartidoResponse> partidos = partidoService.buscarTodosParaAdmin();
         return ResponseEntity.ok(partidos);
     }
+
+    @GetMapping("/{id}/comentarios")
+    public ResponseEntity<Page<ComentarioResponse>> obtenerComentariosPartido(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ComentarioResponse> comentarios = comentarioService.obtenerComentariosPartido(id, pageable);
+        return ResponseEntity.ok(comentarios);
+    }
 }

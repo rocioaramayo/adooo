@@ -32,6 +32,11 @@ public class ComentarioService {
         Partido partido = partidoRepository.findById(request.getPartidoId())
                 .orElseThrow(() -> new PartidoNoEncontradoException("Partido no encontrado"));
 
+        // Validar que el partido esté finalizado
+        if (!"FINALIZADO".equals(partido.getEstadoActual())) {
+            return MessageResponse.error("Solo se puede comentar en partidos finalizados", "El partido no está finalizado.");
+        }
+
         // Verificar si el usuario ya comentó
         if (comentarioRepository.findByPartidoAndUsuario(partido, usuario).isPresent()) {
             return MessageResponse.error("Ya has comentado este partido", "El usuario ya ha dejado un comentario para este partido.");
