@@ -102,18 +102,22 @@ public class Partido implements ObservablePartido {
     }
 
     public void cambiarEstado(String nuevoEstado) {
-        // Solo permite transiciones válidas según el patrón State
-        if (this.estado == null) {
-            // Inicializa el estado si es null
-            this.estado = obtenerEstadoPorNombre(this.estadoActual);
+        // No se puede cancelar ni cambiar desde EN_JUEGO, FINALIZADO o CANCELADO
+        if ("EN_JUEGO".equals(this.estadoActual) || "FINALIZADO".equals(this.estadoActual) || "CANCELADO".equals(this.estadoActual)) {
+            return;
         }
         EstadoPartido nuevo = obtenerEstadoPorNombre(nuevoEstado);
-        // No se puede volver a estados anteriores desde FINALIZADO o CANCELADO
-        if ("FINALIZADO".equals(this.estadoActual) || "CANCELADO".equals(this.estadoActual)) {
-            // No permite ninguna transición desde estados finales
+        // Permitir cancelar desde cualquier estado intermedio
+        if ("CANCELADO".equals(nuevoEstado)) {
+            this.estado = nuevo;
+            this.estadoActual = nuevoEstado;
+            notificarObservers();
             return;
         }
         // Solo permite avanzar al siguiente estado lógico
+        if (this.estado == null) {
+            this.estado = obtenerEstadoPorNombre(this.estadoActual);
+        }
         EstadoPartido siguiente = this.estado.obtenerEstadoSiguiente();
         if (siguiente.getNombre().equals(nuevoEstado)) {
             this.estado = nuevo;

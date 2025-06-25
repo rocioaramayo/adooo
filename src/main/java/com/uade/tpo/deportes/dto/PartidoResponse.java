@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.uade.tpo.deportes.enums.NivelJuego;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -27,4 +29,6 @@ public class PartidoResponse {
     private LocalDateTime createdAt;
     private boolean puedeUnirse;
     private Double compatibilidad;
+    private NivelJuego nivelMinimo;
+    private NivelJuego nivelMaximo;
 }

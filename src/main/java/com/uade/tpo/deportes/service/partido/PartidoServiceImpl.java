@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import com.uade.tpo.deportes.service.partido.NotificacionAsyncService;
+import com.uade.tpo.deportes.enums.NivelJuego;
 
 @Service
 @RequiredArgsConstructor
@@ -558,7 +559,21 @@ private void reconectarObservers(Partido partido) {
         boolean puedeUnirse = usuario != null && partido.puedeUnirse(usuario);
         Double compatibilidad = usuario != null && partido.getEstrategiaEmparejamiento() != null ? 
                 partido.getEstrategiaEmparejamiento().calcularCompatibilidad(usuario, partido) : 0.0;
-        
+        NivelJuego nivelMinimo = null;
+        NivelJuego nivelMaximo = null;
+        if ("POR_NIVEL".equals(partido.getEstrategiaActual()) && partido.getEstrategiaEmparejamiento() instanceof com.uade.tpo.deportes.patterns.strategy.EmparejamientoPorNivelStrategy) {
+            com.uade.tpo.deportes.patterns.strategy.EmparejamientoPorNivelStrategy estrategia = (com.uade.tpo.deportes.patterns.strategy.EmparejamientoPorNivelStrategy) partido.getEstrategiaEmparejamiento();
+            try {
+                java.lang.reflect.Field fMin = estrategia.getClass().getDeclaredField("nivelMinimo");
+                java.lang.reflect.Field fMax = estrategia.getClass().getDeclaredField("nivelMaximo");
+                fMin.setAccessible(true);
+                fMax.setAccessible(true);
+                nivelMinimo = (NivelJuego) fMin.get(estrategia);
+                nivelMaximo = (NivelJuego) fMax.get(estrategia);
+            } catch (Exception e) {
+                // Ignorar si falla
+            }
+        }
         return PartidoResponse.builder()
                 .id(partido.getId())
                 .deporte(mapearDeporteAResponse(partido.getDeporte()))
@@ -576,6 +591,8 @@ private void reconectarObservers(Partido partido) {
                 .createdAt(partido.getCreatedAt())
                 .puedeUnirse(puedeUnirse)
                 .compatibilidad(compatibilidad)
+                .nivelMinimo(nivelMinimo)
+                .nivelMaximo(nivelMaximo)
                 .build();
     }
 
