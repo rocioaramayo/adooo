@@ -29,6 +29,6 @@ unomas:
       enabled: true
       firebase:
         # Ruta al archivo de credenciales de servicio de Firebase
-        service-account-path: ${FIREBASE_SERVICE_ACCOUNT:src/main/resources/uno-mas-1f274-firebase-adminsdk-fbsvc-b0d2e45a4d.json}
+        service-account-path: ${FIREBASE_SERVICE_ACCOUNT:src/main/resources/uno-mas-1f274-firebase-adminsdk-fbsvc-e26db79c2e.json}
         # Configuración del proyecto
         project-id: uno-mas-1f274
